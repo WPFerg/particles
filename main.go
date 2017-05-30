@@ -13,9 +13,12 @@ func createParticles(count int) []primitives.Particle {
 	for i := 0; i < count; i++ {
 		particles[i] = primitives.Particle{
 			Position: primitives.Point{rand.Float64(), rand.Float64(), rand.Float64()},
-			Vector:   primitives.Vector{rand.Float64(), rand.Float64(), rand.Float64()},
+			Vector:   primitives.Vector{float64(0), float64(0), float64(0)},
+			Mass:     0.1,
 		}
 	}
+
+	particles[0].Mass = 10
 
 	return particles
 }
@@ -30,7 +33,9 @@ func main() {
 	}
 
 	log.Println("Creating particles.")
-	particles := createParticles(100)
+	particles := createParticles(500)
 
 	Simulate(&cube, &particles)
+
+	log.Println("Done")
 }

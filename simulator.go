@@ -7,20 +7,26 @@ import (
 )
 
 func Simulate(cube *primitives.Cube, particles *[]primitives.Particle) {
-	MAX_ITERATIONS := 100
+	MAX_ITERATIONS := 1000
 
 	log.Println("Starting simulation.")
 
 	currentIteration := *particles
 
 	for i := 0; i < MAX_ITERATIONS; i++ {
+		nextIteration := make([]primitives.Particle, len(currentIteration))
 
-		for j, particle := range currentIteration {
-			otherParticles := append(currentIteration[:j], currentIteration[j+1:]...)
-			particle.Tick(0.1, &otherParticles)
+		if i%50 == 0 {
+			log.Println("Running iteration", i)
 		}
 
-		currentIteration = (*cube).Collide(currentIteration)
+		for j, particle := range currentIteration {
+			particle.Tick(1e-4, &currentIteration)
+			nextIteration[j] = particle
+		}
+
+		// (*cube).Collide(&nextIteration)
+		currentIteration = nextIteration
 
 		SaveFile(i, currentIteration)
 	}

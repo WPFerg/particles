@@ -21,7 +21,7 @@ func flip(collisionAxisA, collisionAxisB, particlePosition, particleVelocity flo
 		breachingAxis = min
 	}
 
-	return breachingAxis - particlePosition, -particleVelocity
+	return breachingAxis - (particlePosition - breachingAxis), -particleVelocity
 }
 
 func collides(collisionAxisA, collisionAxisB, particlePosition float64) bool {
@@ -32,16 +32,25 @@ func collides(collisionAxisA, collisionAxisB, particlePosition float64) bool {
 
 func (cube *Cube) runCollider(particles *[]Particle) *[]Particle {
 	for i, particle := range *particles {
-		if collides(cube.PointA.X, cube.PointB.X, particle.Position.X) {
-			particle.Position.X, particle.Vector.X = flip(cube.PointA.X, cube.PointB.X, particle.Position.X, particle.Vector.X)
-		}
+		hasCollided := true
 
-		if collides(cube.PointA.Y, cube.PointB.Y, particle.Position.Y) {
-			particle.Position.Y, particle.Vector.Y = flip(cube.PointA.Y, cube.PointB.Y, particle.Position.Y, particle.Vector.Y)
-		}
+		for hasCollided {
+			hasCollided = false
 
-		if collides(cube.PointA.Z, cube.PointB.Z, particle.Position.Z) {
-			particle.Position.Z, particle.Vector.Z = flip(cube.PointA.Z, cube.PointB.Z, particle.Position.Z, particle.Vector.Z)
+			if collides(cube.PointA.X, cube.PointB.X, particle.Position.X) {
+				hasCollided = true
+				particle.Position.X, particle.Vector.X = flip(cube.PointA.X, cube.PointB.X, particle.Position.X, particle.Vector.X)
+			}
+
+			if collides(cube.PointA.Y, cube.PointB.Y, particle.Position.Y) {
+				hasCollided = true
+				particle.Position.Y, particle.Vector.Y = flip(cube.PointA.Y, cube.PointB.Y, particle.Position.Y, particle.Vector.Y)
+			}
+
+			if collides(cube.PointA.Z, cube.PointB.Z, particle.Position.Z) {
+				hasCollided = true
+				particle.Position.Z, particle.Vector.Z = flip(cube.PointA.Z, cube.PointB.Z, particle.Position.Z, particle.Vector.Z)
+			}
 		}
 
 		(*particles)[i] = particle
@@ -50,6 +59,6 @@ func (cube *Cube) runCollider(particles *[]Particle) *[]Particle {
 	return particles
 }
 
-func (cube *Cube) Collide(particles []Particle) []Particle {
-	return *(cube.runCollider(&particles))
+func (cube *Cube) Collide(particles *[]Particle) *[]Particle {
+	return cube.runCollider(particles)
 }
