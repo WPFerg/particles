@@ -21,7 +21,7 @@ func flip(collisionAxisA, collisionAxisB, particlePosition, particleVelocity flo
 		breachingAxis = min
 	}
 
-	return breachingAxis - (particlePosition - breachingAxis), -particleVelocity
+	return breachingAxis - (particlePosition - breachingAxis), -0.9 * particleVelocity
 }
 
 func collides(collisionAxisA, collisionAxisB, particlePosition float64) bool {

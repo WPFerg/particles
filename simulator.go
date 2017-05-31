@@ -2,87 +2,101 @@ package main
 
 import (
 	"log"
-	"math"
 
 	"github.com/wpferg/particles/primitives"
 )
 
-func getComparisonParticles(subcubes *primitives.Subcubes, x, y, z int) *[]primitives.Particle {
-	var particles []primitives.Particle
-	CUBE_RANGE := 3
-	CUBES_PER_AXIS := float64(len(subcubes.Cubes))
+var TIME_SLICE = 1e-6
+var ITERATION_COUNT = 3000
 
-	// +1 for end indices to make them inclusive when slicing
-	startX := int(math.Max(0.0, math.Min(float64(x-CUBE_RANGE), CUBES_PER_AXIS)))
-	endX := int(math.Max(0.0, math.Min(float64(x+CUBE_RANGE+1), CUBES_PER_AXIS)))
-	startY := int(math.Max(0.0, math.Min(float64(y-CUBE_RANGE), CUBES_PER_AXIS)))
-	endY := int(math.Max(0.0, math.Min(float64(y+CUBE_RANGE+1), CUBES_PER_AXIS)))
-	startZ := int(math.Max(0.0, math.Min(float64(z-CUBE_RANGE+1), CUBES_PER_AXIS)))
-	endZ := int(math.Max(0.0, math.Min(float64(z+CUBE_RANGE), CUBES_PER_AXIS)))
-
-	for xIndex := range subcubes.Cubes[startX:endX] {
-		yZSlice := subcubes.Cubes[startX+xIndex]
-
-		for yIndex := range yZSlice[startY:endY] {
-			zSlice := yZSlice[startY+yIndex]
-
-			for _, subcube := range zSlice[startZ:endZ] {
-				particles = append(particles, subcube.Particles...)
-			}
-		}
-	}
-
-	return &particles
+type Simulation struct {
+	inputChannels  []inputChannel
+	outputChannels []outputChannel
 }
 
-func simulateSubcube(subcubes *primitives.Subcubes, x, y, z int) []primitives.Particle {
-	subcube := subcubes.Cubes[x][y][z]
-	newPositions := make([]primitives.Particle, len(subcube.Particles))
-	comparisonParticles := getComparisonParticles(subcubes, x, y, z)
+type inputChannel chan [][]primitives.Subcube
+type outputChannel chan []primitives.Particle
 
-	// particle is copied by value, so can mutate
-	for i, particle := range subcube.Particles {
-		particle.Tick(1e-6, comparisonParticles)
-		newPositions[i] = particle
+func (s *Simulation) Tick(subcubes *primitives.Subcubes) []primitives.Particle {
+	for i, slice := range subcubes.Cubes {
+		s.inputChannels[i] <- slice
 	}
-	return newPositions
+
+	var nextParticles []primitives.Particle
+
+	for _, channel := range s.outputChannels {
+		nextParticles = append(nextParticles, (<-channel)...)
+	}
+
+	return nextParticles
 }
 
-func simulateSubcubes(subcubes *primitives.Subcubes) []primitives.Particle {
-	newPositions := make([]primitives.Particle, 0)
+// A thread that takes some input, ticks the particles, then returns some output.
+func startSimulationThread(input inputChannel, output outputChannel) {
+	var subcubes [][]primitives.Subcube
+	ok := true
+	for ok {
+		subcubes, ok = <-input
+		if ok {
+			var newPositions []primitives.Particle
 
-	for x := range subcubes.Cubes {
-		for y := range subcubes.Cubes[x] {
-			for z := range subcubes.Cubes[x][y] {
-				newPositions = append(newPositions, simulateSubcube(subcubes, x, y, z)...)
+			for y := range subcubes {
+				for z := range subcubes[y] {
+					newPositions = append(newPositions, (*subcubes[y][z].Tick(TIME_SLICE))...)
+				}
 			}
+
+			output <- newPositions
 		}
 	}
+}
 
-	return newPositions
+func startSimulationThreads(threadCount int) ([]inputChannel, []outputChannel) {
+	inputChannels := make([]inputChannel, threadCount)
+	outputChannels := make([]outputChannel, threadCount)
+
+	for i := 0; i < threadCount; i++ {
+		inputChannels[i] = make(inputChannel)
+		outputChannels[i] = make(outputChannel)
+		go startSimulationThread(inputChannels[i], outputChannels[i])
+	}
+
+	return inputChannels, outputChannels
 }
 
 func Simulate(cube *primitives.Cube, subcubes *primitives.Subcubes, particles *[]primitives.Particle) {
-	MAX_ITERATIONS := 3000
 
 	log.Println("Starting simulation.")
 
 	currentIteration := *particles
 
-	for i := 0; i < MAX_ITERATIONS; i++ {
+	log.Println("Creating threads")
+	inputChannels, outputChannels := startSimulationThreads(len(subcubes.Cubes))
+
+	simulation := Simulation{
+		inputChannels:  inputChannels,
+		outputChannels: outputChannels,
+	}
+
+	for i := 0; i < ITERATION_COUNT; i++ {
 		var nextIteration []primitives.Particle
 
 		if i%50 == 0 {
 			log.Println("Running iteration", i)
 		}
 
-		nextIteration = simulateSubcubes(subcubes)
+		nextIteration = simulation.Tick(subcubes)
 
 		(*cube).Collide(&nextIteration)
 		currentIteration = nextIteration
 
-		SaveFile(i, currentIteration)
+		go SaveFile(i, currentIteration)
 
 		subcubes.UpdateParticlePositions(&nextIteration)
+	}
+
+	for i := range inputChannels {
+		close(inputChannels[i])
+		close(outputChannels[i])
 	}
 }

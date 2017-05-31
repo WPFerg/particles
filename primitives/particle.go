@@ -4,7 +4,7 @@ import (
 	"math"
 )
 
-const k = float64(-1)
+const k = float64(1)
 
 type Particle struct {
 	Position Point
@@ -24,9 +24,9 @@ func findDistance(x, y, z float64) float64 {
 }
 
 func (p *Particle) Tick(duration float64, otherParticles *[]Particle) {
-	p.Vector.X *= 0.9
-	p.Vector.Y *= 0.9
-	p.Vector.Z *= 0.9
+	// p.Vector.X *= 0.9
+	// p.Vector.Y *= 0.9
+	// p.Vector.Z *= 0.9
 	for _, otherParticle := range *otherParticles {
 		xDiff, yDiff, zDiff := p.Position.X-otherParticle.Position.X,
 			p.Position.Y-otherParticle.Position.Y,

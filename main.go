@@ -7,18 +7,22 @@ import (
 	"github.com/wpferg/particles/primitives"
 )
 
+func getPos() float64 {
+	return 0.25 + rand.Float64()*0.5
+}
+
 func createParticles(count int) []primitives.Particle {
 	particles := make([]primitives.Particle, count)
 
 	for i := 0; i < count; i++ {
 		particles[i] = primitives.Particle{
-			Position: primitives.Point{rand.Float64(), rand.Float64(), rand.Float64()},
+			Position: primitives.Point{getPos(), getPos(), getPos()},
 			Vector:   primitives.Vector{float64(0), float64(0), float64(0)},
 			Mass:     0.1,
 		}
 	}
 
-	particles[0].Mass = 10
+	particles[0].Mass = -10
 
 	return particles
 }
@@ -33,10 +37,10 @@ func main() {
 	}
 
 	log.Println("Creating subcube partitioner")
-	subcubes := primitives.GenerateSubcubes(0.2)
+	subcubes := primitives.GenerateSubcubes(0.025)
 
 	log.Println("Creating particles.")
-	particles := createParticles(500)
+	particles := createParticles(10000)
 
 	log.Println("Partitioning particles into subcubes")
 	subcubes.UpdateParticlePositions(&particles)

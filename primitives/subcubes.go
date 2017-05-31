@@ -30,15 +30,55 @@ func (s *Subcubes) clearCubes() {
 	}
 }
 
+func (s *Subcubes) updateNeighbouringParticles() {
+	for x := range s.Cubes {
+		for y := range s.Cubes[x] {
+			for z := range s.Cubes[x][y] {
+				s.Cubes[x][y][z].RelevantParticles = *s.getNeighbouringParticles(x, y, z)
+			}
+		}
+	}
+}
+
+func (s *Subcubes) getNeighbouringParticles(x, y, z int) *[]Particle {
+	var particles []Particle
+	CUBE_RANGE := 3
+	CUBES_PER_AXIS := float64(len(s.Cubes))
+
+	// +1 for end indices to make them inclusive when slicing
+	startX := int(math.Max(0.0, math.Min(float64(x-CUBE_RANGE), CUBES_PER_AXIS)))
+	endX := int(math.Max(0.0, math.Min(float64(x+CUBE_RANGE+1), CUBES_PER_AXIS)))
+	startY := int(math.Max(0.0, math.Min(float64(y-CUBE_RANGE), CUBES_PER_AXIS)))
+	endY := int(math.Max(0.0, math.Min(float64(y+CUBE_RANGE+1), CUBES_PER_AXIS)))
+	startZ := int(math.Max(0.0, math.Min(float64(z-CUBE_RANGE), CUBES_PER_AXIS)))
+	endZ := int(math.Max(0.0, math.Min(float64(z+CUBE_RANGE+1), CUBES_PER_AXIS)))
+
+	for xIndex := range s.Cubes[startX:endX] {
+		yZSlice := s.Cubes[startX+xIndex]
+
+		for yIndex := range yZSlice[startY:endY] {
+			zSlice := yZSlice[startY+yIndex]
+
+			for _, subcube := range zSlice[startZ:endZ] {
+				particles = append(particles, subcube.Particles...)
+			}
+		}
+	}
+
+	return &particles
+}
+
 func (s *Subcubes) UpdateParticlePositions(particles *[]Particle) {
 	s.clearCubes()
 	s.Particles = *particles
 
 	for i := range s.Particles {
 		x, y, z := getIntendedSubcube(&s.Particles[i], s.subcubeAxisSize)
-		// TODO: may be able to use val not ref here
-		s.Cubes[x][y][z].Particles = append(s.Cubes[x][y][z].Particles, s.Particles[i])
+		intendedSubcube := &s.Cubes[x][y][z]
+		intendedSubcube.Particles = append(intendedSubcube.Particles, s.Particles[i])
 	}
+
+	s.updateNeighbouringParticles()
 }
 
 func GenerateSubcubes(subcubeWidth float64) Subcubes {
