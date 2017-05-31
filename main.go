@@ -32,10 +32,16 @@ func main() {
 		PointB: primitives.Point{1, 1, 1},
 	}
 
+	log.Println("Creating subcube partitioner")
+	subcubes := primitives.GenerateSubcubes(0.2)
+
 	log.Println("Creating particles.")
 	particles := createParticles(500)
 
-	Simulate(&cube, &particles)
+	log.Println("Partitioning particles into subcubes")
+	subcubes.UpdateParticlePositions(&particles)
+
+	Simulate(&cube, &subcubes, &particles)
 
 	log.Println("Done")
 }
